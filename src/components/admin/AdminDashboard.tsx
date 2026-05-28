@@ -437,11 +437,80 @@ function ActivityTab() {
   );
 }
 
+// ─── Change-password tab ──────────────────────────────────────────────────────
+
+function ChangePasswordTab() {
+  const [form, setForm]     = useState({ current: "", next: "", confirm: "" });
+  const [error, setError]   = useState("");
+  const [done, setDone]     = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    if (!form.current || !form.next || !form.confirm) { setError("All fields are required."); return; }
+    if (form.next.length < 8) { setError("New password must be at least 8 characters."); return; }
+    if (form.next !== form.confirm) { setError("Passwords do not match."); return; }
+    setLoading(true);
+    const res = await fetch("/api/auth/change-password", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ currentPassword: form.current, newPassword: form.next }),
+    });
+    const data = await res.json();
+    setLoading(false);
+    if (!res.ok) { setError(data.error ?? "Failed to update password."); return; }
+    setDone(true);
+    setForm({ current: "", next: "", confirm: "" });
+  }
+
+  return (
+    <div className="max-w-md space-y-5">
+      <h2 className="text-base font-bold text-[var(--foreground)] flex items-center gap-2 mb-6">
+        <Lock size={15} className="text-[var(--color-primary-500)]" />Change Your Password
+      </h2>
+      {done ? (
+        <div className="flex items-center gap-2 p-4 rounded-xl bg-[var(--color-success)]/10 border border-[var(--color-success)]/30">
+          <Check size={16} className="text-[var(--color-success)]" />
+          <span className="text-sm font-medium text-[var(--foreground)]">Password updated successfully.</span>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {(["current", "next", "confirm"] as const).map((field) => (
+            <div key={field}>
+              <label className="block text-xs font-medium text-[var(--foreground)] mb-1.5">
+                {field === "current" ? "Current password" : field === "next" ? "New password" : "Confirm new password"}
+              </label>
+              <input
+                type="password"
+                placeholder={field === "next" ? "Min 8 characters" : "••••••••"}
+                value={form[field]}
+                onChange={(e) => setForm((f) => ({ ...f, [field]: e.target.value }))}
+                className="w-full h-10 px-3 rounded-lg border border-[var(--border)] bg-[var(--elevated)] text-sm text-[var(--foreground)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--color-primary-500)] focus:ring-2 focus:ring-[var(--color-primary-500)]/30 transition-all"
+              />
+            </div>
+          ))}
+          {error && (
+            <p className="flex items-center gap-1.5 text-xs text-[var(--color-error)]">
+              <AlertTriangle size={11} />{error}
+            </p>
+          )}
+          <button type="submit" disabled={loading}
+            className="flex items-center gap-2 px-5 h-10 rounded-xl bg-[var(--color-primary-500)] text-black text-sm font-semibold hover:bg-[var(--color-primary-400)] transition-colors disabled:opacity-60">
+            {loading ? <><Loader2 size={13} className="animate-spin" />Updating…</> : "Update password"}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export function AdminDashboard() {
   const { user, loading } = useAuthStore();
-  const [tab, setTab] = useState<"employees" | "activity">("employees");
+  const [tab, setTab] = useState<"employees" | "activity" | "settings">("employees");
 
   if (loading) {
     return (
@@ -486,7 +555,7 @@ export function AdminDashboard() {
 
       {/* Tabs */}
       <div className="flex border-b border-[var(--border)] mb-8">
-        {[["employees", "Employee Management"], ["activity", "Activity Log"]] .map(([id, label]) => (
+        {[["employees", "Employee Management"], ["activity", "Activity Log"], ["settings", "Settings"]] .map(([id, label]) => (
           <button key={id} onClick={() => setTab(id as any)}
             className={cn("px-5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors",
               tab === id ? "text-[var(--color-primary-500)] border-[var(--color-primary-500)]"
@@ -500,6 +569,7 @@ export function AdminDashboard() {
         <motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
           {tab === "employees" && <EmployeesTab actorRole={user.role} />}
           {tab === "activity"  && <ActivityTab />}
+          {tab === "settings"  && <ChangePasswordTab />}
         </motion.div>
       </AnimatePresence>
     </div>

@@ -18,7 +18,6 @@ const FOOTER_LINKS = {
   Platform: [
     { href: "/ai-guidelines",      label: "AI Guidelines" },
     { href: "/employee-portal",    label: "Employee Portal"},
-    { href: "/admin",              label: "Admin Panel"   },
     { href: "/guide#branding",     label: "Branding Rules"},
   ],
 };

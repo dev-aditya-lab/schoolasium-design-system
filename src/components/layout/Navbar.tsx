@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Palette, Package, FolderOpen, Bot, Users,
-  Search, Menu, X, ChevronRight, Zap, Shield, BookOpen,
+  Search, Menu, X, ChevronRight, Zap, BookOpen,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useAuthStore } from "@/lib/store/authStore";
@@ -26,7 +26,6 @@ interface NavbarProps { onSearchOpen?: () => void }
 export function Navbar({ onSearchOpen }: NavbarProps) {
   const pathname   = usePathname();
   const user       = useAuthStore((s) => s.user);
-  const isAdmin    = user?.role === "admin" || user?.role === "super_admin";
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -87,16 +86,6 @@ export function Navbar({ onSearchOpen }: NavbarProps) {
                 </Link>
               );
             })}
-            {isAdmin && (
-              <Link href="/admin"
-                className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-150",
-                  pathname.startsWith("/admin")
-                    ? "text-[var(--color-error)] bg-[var(--color-error)]/10"
-                    : "text-[var(--text-muted)] hover:text-[var(--color-error)] hover:bg-[var(--color-error)]/8")}>
-                <Shield size={14} strokeWidth={1.75} />
-                Admin
-              </Link>
-            )}
           </div>
 
           <div className="flex-1 lg:hidden" />
@@ -165,13 +154,6 @@ export function Navbar({ onSearchOpen }: NavbarProps) {
                   </Link>
                 );
               })}
-              {isAdmin && (
-                <Link href="/admin"
-                  className="flex items-center justify-between px-3 py-2.5 rounded-lg text-[var(--color-error)] hover:bg-[var(--color-error)]/10 transition-colors">
-                  <span className="flex items-center gap-2.5 text-sm font-medium"><Shield size={16} strokeWidth={1.75} />Admin Panel</span>
-                  <ChevronRight size={14} className="text-[var(--text-muted)]" />
-                </Link>
-              )}
               <Link href="/employee-portal"
                 className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-[var(--color-primary-500)]/10 text-[var(--color-primary-500)] mt-2 transition-colors">
                 <span className="flex items-center gap-2.5 text-sm font-medium"><Users size={16} strokeWidth={1.75} />{user ? user.name : "Sign in"}</span>

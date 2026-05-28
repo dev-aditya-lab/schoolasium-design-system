@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Lock, Shield, Bell, Download, Activity, Zap, Star,
+  Lock, Check, Bell, Download, Activity, Zap, Star,
   FileText, Package, Layers, ArrowRight, Eye, EyeOff,
   LogIn, AlertCircle, Settings, ChevronRight, Megaphone,
   Clock, ExternalLink, Loader2,
@@ -112,24 +112,6 @@ function LoginWall() {
           </button>
         </form>
 
-        {/* Demo accounts hint */}
-        <div className="mt-6 p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] space-y-2">
-          <div className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">Demo accounts (after seeding DB)</div>
-          {[
-            { email: "aditya@schoolasium.com", role: "Super Admin", pwd: "Admin@1234" },
-            { email: "sara@schoolasium.com",   role: "Admin",       pwd: "Admin@1234" },
-            { email: "marcus@schoolasium.com", role: "Employee",    pwd: "Employee@1234" },
-          ].map(({ email: de, role, pwd }) => (
-            <button key={de} onClick={() => { setEmail(de); setPassword(pwd); }}
-              className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg hover:bg-[var(--hover)] transition-colors text-left">
-              <span className="text-[10px] font-mono text-[var(--text-secondary)] truncate">{de}</span>
-              <span className="text-[9px] px-1.5 py-0.5 rounded border border-[var(--border)] text-[var(--text-muted)] ml-2 flex-shrink-0">{role}</span>
-            </button>
-          ))}
-          <p className="text-[9px] text-[var(--text-muted)] pt-1">
-            Run <code className="font-mono bg-[var(--elevated)] px-1 rounded">POST /api/admin/seed</code> first to populate the database.
-          </p>
-        </div>
       </motion.div>
     </div>
   );
@@ -173,7 +155,10 @@ function Dashboard() {
   const { user, signOut } = useAuthStore();
   const { events, fetchEvents, log } = useActivityStore();
   const [tab, setTab] = useState<"overview" | "activity" | "settings">("overview");
-  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+  const [cpForm, setCpForm]   = useState({ current: "", next: "", confirm: "" });
+  const [cpError, setCpError] = useState("");
+  const [cpDone, setCpDone]   = useState(false);
+  const [cpLoading, setCpLoading] = useState(false);
 
   useEffect(() => {
     if (tab === "activity" && user) {
@@ -184,6 +169,26 @@ function Dashboard() {
   async function handleSignOut() {
     await log({ type: "logout", detail: "Signed out" });
     await signOut();
+  }
+
+  async function handleChangePw(e: React.FormEvent) {
+    e.preventDefault();
+    setCpError("");
+    if (!cpForm.current || !cpForm.next || !cpForm.confirm) { setCpError("All fields are required."); return; }
+    if (cpForm.next.length < 8) { setCpError("New password must be at least 8 characters."); return; }
+    if (cpForm.next !== cpForm.confirm) { setCpError("Passwords do not match."); return; }
+    setCpLoading(true);
+    const res = await fetch("/api/auth/change-password", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ currentPassword: cpForm.current, newPassword: cpForm.next }),
+    });
+    const data = await res.json();
+    setCpLoading(false);
+    if (!res.ok) { setCpError(data.error ?? "Failed to update password."); return; }
+    setCpDone(true);
+    setCpForm({ current: "", next: "", confirm: "" });
   }
 
   if (!user) return null;
@@ -201,12 +206,6 @@ function Dashboard() {
           <p className="text-sm text-[var(--text-secondary)] mt-1">{ROLE_LABELS[user.role]} · {user.department}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {isAdmin && (
-            <Link href="/admin"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-[var(--color-error)]/30 text-[var(--color-error)] hover:bg-[var(--color-error)]/10 transition-colors">
-              <Shield size={11} />Admin Panel
-            </Link>
-          )}
           <span className="flex items-center gap-1.5 text-xs text-[var(--color-success-dark)] bg-[var(--color-success)]/10 border border-[var(--color-success)]/30 px-3 py-1.5 rounded-full">
             <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-success)] animate-pulse" />
             Signed in
@@ -270,7 +269,6 @@ function Dashboard() {
                     { label: "Resource Hub",     href: "/resources",     icon: Layers  },
                     { label: "AI Guidelines",    href: "/ai-guidelines", icon: Zap     },
                     { label: "Getting Started",  href: "/guide",         icon: FileText},
-                    ...(isAdmin ? [{ label: "Admin Panel", href: "/admin", icon: Shield }] : []),
                   ].map(({ label, href, icon: Icon }) => (
                     <Link key={label} href={href}
                       className="flex items-center gap-3 p-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--elevated)] hover:border-[var(--color-primary-500)]/25 transition-all group">
@@ -323,6 +321,40 @@ function Dashboard() {
                   <span className="text-[10px] px-2 py-0.5 rounded-full border border-[var(--border)] text-[var(--text-secondary)]">{user.department}</span>
                 </div>
               </div>
+
+              <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] space-y-3">
+                <div className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Change Password</div>
+                {cpDone ? (
+                  <div className="flex items-center gap-2 text-sm text-[var(--color-success-dark)]">
+                    <Check size={14} className="text-[var(--color-success)]" />Password updated. Sign in again on other devices if needed.
+                  </div>
+                ) : (
+                  <form onSubmit={handleChangePw} className="space-y-3">
+                    {(["current", "next", "confirm"] as const).map((field) => (
+                      <div key={field}>
+                        <label className="block text-xs font-medium text-[var(--foreground)] mb-1">
+                          {field === "current" ? "Current password" : field === "next" ? "New password" : "Confirm new password"}
+                        </label>
+                        <input type="password"
+                          placeholder={field === "next" ? "Min 8 characters" : "••••••••"}
+                          value={cpForm[field]}
+                          onChange={(e) => setCpForm((f) => ({ ...f, [field]: e.target.value }))}
+                          className="w-full h-10 px-3 rounded-lg border border-[var(--border)] bg-[var(--elevated)] text-sm text-[var(--foreground)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--color-primary-500)] focus:ring-2 focus:ring-[var(--color-primary-500)]/30 transition-all" />
+                      </div>
+                    ))}
+                    {cpError && (
+                      <p className="flex items-center gap-1.5 text-xs text-[var(--color-error)]">
+                        <AlertCircle size={12} />{cpError}
+                      </p>
+                    )}
+                    <button type="submit" disabled={cpLoading}
+                      className="flex items-center gap-2 px-5 h-10 rounded-xl bg-[var(--color-primary-500)] text-black text-sm font-semibold hover:bg-[var(--color-primary-400)] transition-colors disabled:opacity-60">
+                      {cpLoading ? <><Loader2 size={13} className="animate-spin" />Updating…</> : "Update password"}
+                    </button>
+                  </form>
+                )}
+              </div>
+
               {[
                 { label: "Email notifications",  desc: "Announcements, changelog, new assets",    defaultOn: true  },
                 { label: "Download history",     desc: "Keep a log of my asset downloads",        defaultOn: true  },
