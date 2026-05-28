@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Lock, Check, Bell, Download, Activity, Zap, Star,
+  Lock, Check, Shield, Bell, Download, Activity, Zap, Star,
   FileText, Package, Layers, ArrowRight, Eye, EyeOff,
   LogIn, AlertCircle, Settings, ChevronRight, Megaphone,
   Clock, ExternalLink, Loader2,
@@ -155,6 +155,7 @@ function Dashboard() {
   const { user, signOut } = useAuthStore();
   const { events, fetchEvents, log } = useActivityStore();
   const [tab, setTab] = useState<"overview" | "activity" | "settings">("overview");
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
   const [cpForm, setCpForm]   = useState({ current: "", next: "", confirm: "" });
   const [cpError, setCpError] = useState("");
   const [cpDone, setCpDone]   = useState(false);
@@ -206,6 +207,12 @@ function Dashboard() {
           <p className="text-sm text-[var(--text-secondary)] mt-1">{ROLE_LABELS[user.role]} · {user.department}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {isAdmin && (
+            <Link href="/admin"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-[var(--color-primary-500)] text-black hover:bg-[var(--color-primary-400)] transition-colors">
+              <Shield size={11} strokeWidth={2} />Admin Panel
+            </Link>
+          )}
           <span className="flex items-center gap-1.5 text-xs text-[var(--color-success-dark)] bg-[var(--color-success)]/10 border border-[var(--color-success)]/30 px-3 py-1.5 rounded-full">
             <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-success)] animate-pulse" />
             Signed in
@@ -269,6 +276,7 @@ function Dashboard() {
                     { label: "Resource Hub",     href: "/resources",     icon: Layers  },
                     { label: "AI Guidelines",    href: "/ai-guidelines", icon: Zap     },
                     { label: "Getting Started",  href: "/guide",         icon: FileText},
+                    ...(isAdmin ? [{ label: "Admin Panel", href: "/admin", icon: Shield }] : []),
                   ].map(({ label, href, icon: Icon }) => (
                     <Link key={label} href={href}
                       className="flex items-center gap-3 p-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--elevated)] hover:border-[var(--color-primary-500)]/25 transition-all group">
